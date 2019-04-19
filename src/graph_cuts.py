@@ -49,16 +49,24 @@ class GraphCuts:
                 # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
                 # capacities only for the nodes corresponding to border pixels.
                 if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
-                    graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
+                    # graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
+                    graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
+        
+        graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
 
         # Plot graph
         # nxg = graph.get_nx_graph()
         # self.plot_graph_2d(nxg, patch_height, patch_width)
-        self.plot_graph_2d(graph, node_ids.shape)
+
+        # flow = graph.maxflow()
+        # sgm = graph.get_grid_segments(node_ids)
+        # print(sgm)
+
+        # self.plot_graph_2d(graph, node_ids.shape)
 
         pass
 
-    def plot_graph_2d(self, graph, nodes_shape, plot_weights=True, plot_terminals=True, font_size=7):
+    def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, plot_terminals=True, font_size=7):
         """
         Plot the graph to be used in graph cuts
         :param graph: PyMaxflow graph
@@ -94,11 +102,103 @@ class GraphCuts:
         plt.axis('equal')
         plt.show()
 
+    def test_case(self):
+        # Create the graph
+        graph = maxflow.Graph[float]()
+        patch_height = 4
+        patch_width = 5
+        # Add the nodes. nodeids has the identifiers of the nodes in the grid.
+        node_ids = graph.add_grid_nodes((patch_height, patch_width))
+
+        edges = [
+            [0, 0, 0, 1, 20, 20], 
+            [0, 0, 1, 0, 20, 20], 
+            [1, 0, 1, 1, 20, 20], 
+            [1, 0, 2, 0, 20, 20], 
+            [2, 0, 2, 1, 20, 20], 
+            [2, 0, 3, 0, 20, 20], 
+            [3, 0, 3, 1, 20, 20], 
+
+            [0, 1, 0, 2, 20, 20], 
+            [0, 1, 1, 1, 20, 20], 
+            [1, 1, 1, 2, 1, 1], 
+            [1, 1, 2, 1, 20, 20], 
+            [2, 1, 2, 2, 1, 1], 
+            [2, 1, 3, 1, 20, 20], 
+            [3, 1, 3, 2, 20, 20], 
+
+            [0, 2, 0, 3, 20, 20], 
+            [0, 2, 1, 2, 1, 1], 
+            [1, 2, 1, 3, 20, 20], 
+            [1, 2, 2, 2, 20, 20], 
+            [2, 2, 2, 3, 20, 20], 
+            [2, 2, 3, 2, 1, 1], 
+            [3, 2, 3, 3, 20, 20], 
+
+            [0, 3, 0, 4, 20, 20], 
+            [0, 3, 1, 3, 1, 1], 
+            [1, 3, 1, 4, 1, 1], 
+            [1, 3, 2, 3, 20, 20], 
+            [2, 3, 2, 4, 1, 1], 
+            [2, 3, 3, 3, 1, 1], 
+            [3, 3, 3, 4, 20, 20], 
+
+            [0, 4, 1, 4, 20, 20], 
+            [1, 4, 2, 4, 20, 20], 
+            [2, 4, 3, 4, 20, 20], 
+        ]
+
+        src_edges = [
+            [0, 0], 
+            [0, 1], 
+            [0, 2], 
+            [0, 3], 
+            [0, 4], 
+            [1, 0], 
+            [2, 0], 
+            [3, 0], 
+            [3, 1], 
+            [3, 2], 
+            [3, 3], 
+            [3, 4], 
+            [2, 4], 
+            [1, 4]
+        ]
+
+        sink_edges = [[2, 3]]
+
+        for edge in edges:
+            src_row = edge[0]
+            src_col = edge[1]
+            dst_row = edge[2]
+            dst_col = edge[3]
+            weight1 = edge[4]
+            weight2 = edge[5]
+            
+            graph.add_edge(node_ids[src_row][src_col], node_ids[dst_row][dst_col], weight1, weight2)
+        
+        for edge in sink_edges:
+            node_row = edge[0]
+            node_col = edge[1]
+            
+            graph.add_tedge(node_ids[node_row][node_col], 0, np.inf)
+
+        for edge in src_edges:
+            node_row = edge[0]
+            node_col = edge[1]
+            
+            graph.add_tedge(node_ids[node_row][node_col], np.inf, 0)
+
+        self.plot_graph_2d(graph, node_ids.shape, True)
+
+        flow = graph.maxflow()
+        sgm = graph.get_grid_segments(node_ids)
+        print(sgm)
 
 if __name__ == '__main__':
     # Load images
-    src = cv2.imread('../data/fish-small.jpg')
-    target = cv2.imread('../data/underwater-small.jpg')
+    src = cv2.imread('../images/fish-small.jpg')
+    target = cv2.imread('../images/underwater-small.jpg')
 
     # # Load mask
     # mat = sio.loadmat('../data/mask-small.mat')
@@ -112,8 +212,10 @@ if __name__ == '__main__':
     # left corners of the patches
     src_roi_pt = (120, 120)     # (x, y)
     sink_roi_pt = (180, 140)    # (x, y)
-    roi_width = 215
-    roi_height = 140
+    # roi_width = 215
+    # roi_height = 140
+    roi_width = 6
+    roi_height = 6
 
     src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
     sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
@@ -124,4 +226,5 @@ if __name__ == '__main__':
     # cv2.waitKey(0)
 
     graphcuts = GraphCuts(src_patch, sink_patch)
+    graphcuts.test_case()
     pass
