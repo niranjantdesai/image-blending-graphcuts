@@ -16,12 +16,13 @@ class GraphCuts:
         :param src: image to be blended (foreground)
         :param sink: background image
         """
-        assert (src.shape == sink.shape), "Source and sink dimensions must be the same"
+        assert (src.shape == sink.shape), "Source and sink dimensions must be the same: " + str(src.shape) + " != " + str(sink.shape)
 
         # Create the graph
         graph = maxflow.Graph[float]()
         # Add the nodes. nodeids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((src.shape[0], src.shape[1]))
+        norm_factor = 10000
 
         # Add non-terminal edges
         patch_height = src.shape[0]
@@ -36,12 +37,14 @@ class GraphCuts:
                 if col_idx + 1 < patch_width:
                     wt_right = np.square(np.linalg.norm(src[row_idx, col_idx + 1, :] - sink[row_idx, col_idx + 1, :]))
                     weight = wt_curr + wt_right
+                    weight = - int (weight/norm_factor)
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
                     wt_bottom = np.square(np.linalg.norm(src[row_idx + 1, col_idx, :] - sink[row_idx + 1, col_idx, :]))
                     weight = wt_curr + wt_bottom
+                    weight = - int (weight/norm_factor)
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
@@ -49,20 +52,21 @@ class GraphCuts:
                 # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
                 # capacities only for the nodes corresponding to border pixels.
                 if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
-                    # graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
+                    # # graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
                     graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
-        
+        # graph.add_tedge(node_ids[patch_height//2][patch_width//2], np.inf, 0)
         graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
 
         # Plot graph
         # nxg = graph.get_nx_graph()
         # self.plot_graph_2d(nxg, patch_height, patch_width)
 
-        # flow = graph.maxflow()
-        # sgm = graph.get_grid_segments(node_ids)
-        # print(sgm)
+        flow = graph.maxflow()
+        sgm = graph.get_grid_segments(node_ids)
+        print(sgm)
+        print(np.sum(sgm))
 
-        # self.plot_graph_2d(graph, node_ids.shape)
+        # self.plot_graph_2d(graph, node_ids.shape, True)
 
         pass
 
@@ -199,6 +203,8 @@ if __name__ == '__main__':
     # Load images
     src = cv2.imread('../images/fish-small.jpg')
     target = cv2.imread('../images/underwater-small.jpg')
+    # src = cv2.imread('../images/1.png')
+    # target = cv2.imread('../images/2.png')
 
     # # Load mask
     # mat = sio.loadmat('../data/mask-small.mat')
@@ -210,12 +216,12 @@ if __name__ == '__main__':
     # cv2.waitKey(0)
 
     # left corners of the patches
-    src_roi_pt = (120, 120)     # (x, y)
-    sink_roi_pt = (180, 140)    # (x, y)
-    # roi_width = 215
-    # roi_height = 140
-    roi_width = 6
-    roi_height = 6
+    src_roi_pt = (150, 125)     # (x, y)
+    sink_roi_pt = (100, 100)    # (x, y)
+    roi_width = 150
+    roi_height = 120
+    # roi_width = 5
+    # roi_height = 5
 
     src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
     sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
@@ -226,5 +232,5 @@ if __name__ == '__main__':
     # cv2.waitKey(0)
 
     graphcuts = GraphCuts(src_patch, sink_patch)
-    graphcuts.test_case()
+    # graphcuts.test_case()
     pass
