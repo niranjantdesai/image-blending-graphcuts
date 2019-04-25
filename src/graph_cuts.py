@@ -39,14 +39,14 @@ class GraphCuts:
 
                 # right neighbor
                 if col_idx + 1 < patch_width:
-                    weight = self.adj_matrix[row_idx * patch_width + col_idx, row_idx * patch_width + col_idx + 1]
-                    weight = - int(weight/norm_factor)
+                    weight = self.adj_matrix[row_idx * patch_width + col_idx, 0]
+                    weight = - weight/norm_factor
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
-                    weight = self.adj_matrix[row_idx * patch_width + col_idx, (row_idx + 1) * patch_width + col_idx]
-                    weight = - int (weight/norm_factor)
+                    weight = self.adj_matrix[row_idx * patch_width + col_idx, 1]
+                    weight = - weight/norm_factor
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
@@ -77,7 +77,7 @@ class GraphCuts:
         height = src.shape[0]
         width = src.shape[1]
         num_pixels = height * width
-        self.adj_matrix = np.zeros((num_pixels, num_pixels))
+        self.adj_matrix = np.zeros((num_pixels, 2))
         for row_idx in range(height):
             for col_idx in range(width):
                 wt_curr = np.square(np.linalg.norm(src[row_idx, col_idx, :] - sink[row_idx, col_idx, :]))
@@ -86,15 +86,15 @@ class GraphCuts:
                 if col_idx + 1 < width:
                     wt_right = np.square(np.linalg.norm(src[row_idx, col_idx + 1, :] - sink[row_idx, col_idx + 1, :]))
                     weight = wt_curr + wt_right
-                    self.adj_matrix[row_idx * width + col_idx, row_idx * width + col_idx + 1] = weight
-                    self.adj_matrix[row_idx * width + col_idx + 1, row_idx * width + col_idx] = weight
+                    self.adj_matrix[row_idx * width + col_idx, 0] = weight
+                    # self.adj_matrix[row_idx * width + col_idx + 1, row_idx * width + col_idx] = weight
 
                 # bottom neighbor
                 if row_idx + 1 < height:
                     wt_bottom = np.square(np.linalg.norm(src[row_idx + 1, col_idx, :] - sink[row_idx + 1, col_idx, :]))
                     weight = wt_curr + wt_bottom
-                    self.adj_matrix[row_idx * width + col_idx, (row_idx + 1) * width + col_idx] = weight
-                    self.adj_matrix[(row_idx + 1) * width + col_idx, row_idx * width + col_idx] = weight
+                    self.adj_matrix[row_idx * width + col_idx, 1] = weight
+                    # self.adj_matrix[(row_idx + 1) * width + col_idx, row_idx * width + col_idx] = weight
 
     def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, plot_terminals=True, font_size=7):
         """
