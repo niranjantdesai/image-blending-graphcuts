@@ -53,9 +53,7 @@ class GraphCuts:
                 # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
                 # capacities only for the nodes corresponding to border pixels.
                 if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
-                    # # graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
                     graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
-        # graph.add_tedge(node_ids[patch_height//2][patch_width//2], np.inf, 0)
         graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
 
         # Plot graph
@@ -203,40 +201,35 @@ class GraphCuts:
 
 if __name__ == '__main__':
     # Load images
-    src = cv2.imread('../images/fish-small.jpg')
-    target = cv2.imread('../images/underwater-small.jpg')
-    # src = cv2.imread('../images/1.png')
-    # target = cv2.imread('../images/2.png')
+    # src = cv2.imread('../images/fish-small.jpg')
+    # target = cv2.imread('../images/underwater-small.jpg')
+    # # left corners of the patches
+    # src_roi_pt = (150, 125)     # (x, y)
+    # sink_roi_pt = (100, 100)    # (x, y)
+    # roi_width = 150
+    # roi_height = 120
 
-    # # Load mask
-    # mat = sio.loadmat('../data/mask-small.mat')
-    # mat = mat['mask']
-
-    # # Crop image
-    # cropped = cv2.bitwise_and(src, src, mask=mat)
-    # cv2.imshow('Cropped image', cropped)
-    # cv2.waitKey(0)
-
+    src = cv2.imread('../images/3.png')
+    target = cv2.imread('../images/4.png')
     # left corners of the patches
-    src_roi_pt = (150, 125)     # (x, y)
-    sink_roi_pt = (100, 100)    # (x, y)
-    roi_width = 150
-    roi_height = 120
-    # roi_width = 5
-    # roi_height = 5
+    src_roi_pt = (0, 50)     # (x, y)
+    sink_roi_pt = (0, 10)    # (x, y)
+    roi_width = 590
+    roi_height = 400
 
     src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
     sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
 
-    # cv2.imshow('Source patch', src_patch)
-    # cv2.waitKey(0)
-    # cv2.imshow('Sink patch', sink_patch)
-    # cv2.waitKey(0)
-
-    graphcuts = GraphCuts(src_patch, sink_patch)
-    # graphcuts.test_case()
-
-    sink_patch[graphcuts.sgm == True] = src_patch[graphcuts.sgm == True]
-    cv2.imshow('Output', sink_patch)
+    cv2.imshow('Source patch', src_patch)
     cv2.waitKey(0)
+    cv2.imshow('Sink patch', sink_patch)
+    cv2.waitKey(0)
+
+    # graphcuts = GraphCuts(src_patch, sink_patch)
+    # # graphcuts.test_case()
+
+    # sink_patch[graphcuts.sgm == True] = src_patch[graphcuts.sgm == True]
+    # cv2.imwrite("result.png", sink_patch)
+    # # cv2.imshow('Output', sink_patch)
+    # cv2.waitKey(0)
     pass
