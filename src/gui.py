@@ -6,11 +6,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import matplotlib.widgets as widgets
+import cv2
+import copy
 
-img1Path = "1.png"
-img2Path = "2.png"
+img1Path = '../images/1.png'
+img2Path = '../images/2.png'
+selectedImg1 = []
+selectedCoords = None
+newChoiceConsumed = False
 
 def onSelect(eclick, erelease):
+    global selectedImg1, fig, newChoiceConsumed
     minx, maxx, miny, maxy = float("inf"), -float("inf"), float("inf"), -float("inf")
     for x, y in zip([eclick.xdata, erelease.xdata], [eclick.ydata, erelease.ydata]):
         if x < minx:
@@ -22,37 +28,54 @@ def onSelect(eclick, erelease):
         if y > maxy:
             maxy = y
     minx, maxx, miny, maxy = int(minx), int(maxx), int(miny), int(maxy)
-    ax3.imshow(arr1[miny:maxy, minx:maxx])
+    selectedImg1 = img1[miny:maxy, minx:maxx]
+    ax3.imshow(selectedImg1)
 
-def onSelect2(eclick, erelease):
-    minx, maxx, miny, maxy = float("inf"), -float("inf"), float("inf"), -float("inf")
-    for x, y in zip([eclick.xdata, erelease.xdata], [eclick.ydata, erelease.ydata]):
-        if x < minx:
-            minx = x
-        if y < miny:
-            miny = y
-        if x > maxx:
-            maxx = x
-        if y > maxy:
-            maxy = y
-    minx, maxx, miny, maxy = int(minx), int(maxx), int(miny), int(maxy)
-    ax4.imshow(arr2[miny:maxy, minx:maxx])
+    newChoiceConsumed = False
+    fig.canvas.draw()
+    fig.canvas.flush_events()
 
-fig = plt.figure(figsize=(18, 18))
+def hover(event):
+    global img2, selectedImg1, fig, newChoiceConsumed
+    if event.inaxes in [ax2] and not isinstance(selectedImg1, list):
+        if not newChoiceConsumed: 
+            x = int(event.xdata); y = int(event.ydata)
+            width = selectedImg1.shape[1]; height = selectedImg1.shape[0]
+
+            selectedCoords = (x, y)
+
+            clone = copy.copy(img2)
+            clone[y: y+height, x: x+width] = selectedImg1
+            ax4.imshow(clone)
+            
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+
+def onclick(event):
+    x, y = event.xdata, event.ydata
+    global newChoiceConsumed
+    if event.inaxes in [ax2]:
+        newChoiceConsumed = True
+
+
+fig = plt.figure(figsize=(20, 20))
 
 ax1 = fig.add_subplot(2, 2, 1)
 im1 = Image.open(img1Path)
-arr1 = np.asarray(im1)
-ax1.imshow(arr1)
+img1 = np.asarray(im1)
+ax1.imshow(img1)
 ax1.axis('off')
 rs1 = widgets.RectangleSelector( ax1, onSelect, drawtype='box', rectprops = dict(facecolor='red', edgecolor = 'black', alpha=0.5, fill=True) )
 
 ax2 = fig.add_subplot(2, 2, 2)
 im2 = Image.open(img2Path)
-arr2 = np.asarray(im2)
-plt_image = plt.imshow(arr2)
+img2 = np.asarray(im2)
+ax2.imshow(img2)
 ax2.axis('off')
-rs2 = widgets.RectangleSelector( ax2, onSelect2, drawtype='box', rectprops = dict(facecolor='blue', edgecolor = 'black', alpha=0.5, fill=True) )
+# rs2 = widgets.RectangleSelector( ax2, onSelect2, drawtype='box', rectprops = dict(facecolor='blue', edgecolor = 'black', alpha=0.5, fill=True) )
+
+fig.canvas.mpl_connect('motion_notify_event', hover)
+fig.canvas.mpl_connect('button_press_event', onclick)
 
 ax3 = fig.add_subplot(2, 2, 3)
 ax3.axis('off')
@@ -64,7 +87,19 @@ plt.show()
 
 
 
-
+# def onSelect2(eclick, erelease):
+#     minx, maxx, miny, maxy = float("inf"), -float("inf"), float("inf"), -float("inf")
+#     for x, y in zip([eclick.xdata, erelease.xdata], [eclick.ydata, erelease.ydata]):
+#         if x < minx:
+#             minx = x
+#         if y < miny:
+#             miny = y
+#         if x > maxx:
+#             maxx = x
+#         if y > maxy:
+#             maxy = y
+#     minx, maxx, miny, maxy = int(minx), int(maxx), int(miny), int(maxy)
+#     ax4.imshow(img2[miny:maxy, minx:maxx])
 
 
 ######### SELECTING IMAGES VIA USER INTERFACE ####################
