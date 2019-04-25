@@ -10,7 +10,7 @@ class GraphCuts:
     """
     Main class for image synthesis with graph cuts
     """
-    def __init__(self, src, sink):
+    def __init__(self, src, sink, mask):
         """
         Initializes the graph
         :param src: image to be blended (foreground)
@@ -26,13 +26,14 @@ class GraphCuts:
 
         # create adjacency matrix
         self.create_adj_matrix(src, sink)
+        print("Assigning weights")
 
         # Add non-terminal edges
         # TODO: use alternate API which is more efficient
         patch_height = src.shape[0]
         patch_width = src.shape[1]
         # norm_factor = np.amax(self.adj_matrix)
-        eps = 1e-6
+        eps = 1e-10
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
                 # matching cost is the sum of squared differences between the pixel values
@@ -43,7 +44,8 @@ class GraphCuts:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 0]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx, col_idx + 1])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx, col_idx + 1]))
-                    weight = - weight / (norm_factor + eps)
+                    # weight = - weight / (norm_factor + eps)
+                    weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
@@ -51,16 +53,23 @@ class GraphCuts:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 1]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx + 1, col_idx])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx + 1, col_idx]))
-                    weight = - weight / (norm_factor + eps)
+                    # weight = - weight / (norm_factor + eps)
+                    weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
                 # We constrain the pixels along the patch border to come from the sink, i.e. the background image.
                 # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
                 # capacities only for the nodes corresponding to border pixels.
-                if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
+
+                if np.array_equal(mask[row_idx, col_idx, ], [0, 255, 255]):
+                    graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
+                elif np.array_equal(mask[row_idx, col_idx, ], [255, 128, 0]):
                     graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
-        graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
+                
+        #         if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
+        #             graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
+        # graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
 
         # Plot graph
         # nxg = graph.get_nx_graph()
@@ -79,6 +88,7 @@ class GraphCuts:
         """
         Create adjacency matrix of the graph
         """
+        print("Creating adjacency matrix")
         height = src.shape[0]
         width = src.shape[1]
         num_pixels = height * width
@@ -241,13 +251,14 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    src = cv2.imread('../images/3.png')
-    target = cv2.imread('../images/4.png')
+    src = cv2.imread('../images/src.jpg')
+    target = cv2.imread('../images/target.jpg')
+    mask = cv2.imread('../images/mask.png')
     # left corners of the patches
-    src_roi_pt = (0, 50)     # (x, y)
-    sink_roi_pt = (0, 10)    # (x, y)
-    roi_width = 590
-    roi_height = 400
+    src_roi_pt = (0, 0)     # (x, y)
+    sink_roi_pt = (0, 0)    # (x, y)
+    roi_width = src.shape[1]
+    roi_height = src.shape[0]
 
     src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
     sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
@@ -256,12 +267,14 @@ if __name__ == '__main__':
     # cv2.waitKey(0)
     # cv2.imshow('Sink patch', sink_patch)
     # cv2.waitKey(0)
+    # cv2.imshow('Mask', mask)
+    # cv2.waitKey(0)
 
-    graphcuts = GraphCuts(src_patch, sink_patch)
+    graphcuts = GraphCuts(src_patch, sink_patch, mask)
     # graphcuts.test_case()
 
     sink_patch[graphcuts.sgm == True] = src_patch[graphcuts.sgm == True]
-    # cv2.imwrite("result.png", sink_patch)
-    cv2.imshow('Output', sink_patch)
+    cv2.imwrite("result.png", sink_patch)
+    # cv2.imshow('Output', sink_patch)
     cv2.waitKey(0)
     pass
