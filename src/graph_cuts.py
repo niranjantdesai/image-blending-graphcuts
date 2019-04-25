@@ -31,7 +31,8 @@ class GraphCuts:
         # TODO: use alternate API which is more efficient
         patch_height = src.shape[0]
         patch_width = src.shape[1]
-        norm_factor = np.amax(self.adj_matrix)
+        # norm_factor = np.amax(self.adj_matrix)
+        eps = 1e-6
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
                 # matching cost is the sum of squared differences between the pixel values
@@ -40,13 +41,17 @@ class GraphCuts:
                 # right neighbor
                 if col_idx + 1 < patch_width:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 0]
-                    weight = - weight/norm_factor
+                    norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx, col_idx + 1])) + \
+                                  np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx, col_idx + 1]))
+                    weight = - weight / (norm_factor + eps)
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 1]
-                    weight = - weight/norm_factor
+                    norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx + 1, col_idx])) + \
+                                  np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx + 1, col_idx]))
+                    weight = - weight / (norm_factor + eps)
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
