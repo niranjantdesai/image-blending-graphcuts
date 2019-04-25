@@ -22,7 +22,8 @@ class GraphCuts:
         graph = maxflow.Graph[float]()
         # Add the nodes. nodeids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((src.shape[0], src.shape[1]))
-        norm_factor = 10000
+        # norm_factor = 10000
+        norm_factor = 1
 
         # Add non-terminal edges
         patch_height = src.shape[0]
@@ -62,9 +63,9 @@ class GraphCuts:
         # self.plot_graph_2d(nxg, patch_height, patch_width)
 
         flow = graph.maxflow()
-        sgm = graph.get_grid_segments(node_ids)
-        print(sgm)
-        print(np.sum(sgm))
+        self.sgm = graph.get_grid_segments(node_ids)
+        print(self.sgm)
+        print(np.sum(self.sgm))
 
         # self.plot_graph_2d(graph, node_ids.shape, True)
 
@@ -199,6 +200,7 @@ class GraphCuts:
         sgm = graph.get_grid_segments(node_ids)
         print(sgm)
 
+
 if __name__ == '__main__':
     # Load images
     src = cv2.imread('../images/fish-small.jpg')
@@ -233,4 +235,8 @@ if __name__ == '__main__':
 
     graphcuts = GraphCuts(src_patch, sink_patch)
     # graphcuts.test_case()
+
+    sink_patch[graphcuts.sgm == True] = src_patch[graphcuts.sgm == True]
+    cv2.imshow('Output', sink_patch)
+    cv2.waitKey(0)
     pass
