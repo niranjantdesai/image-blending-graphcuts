@@ -65,12 +65,12 @@ mask = np.zeros(img1.shape)
 fig = plt.figure(figsize=(20, 20))
 
 ax1 = fig.add_subplot(1, 1, 1)
-ax1.set_title("Select which pixels have to come from this image")
+ax1.set_title("Select which pixels must come from this image")
 ax1.imshow(img1)
 ax1.axis('off')
 
 axcut = plt.axes([0.9, 0.0, 0.1, 0.075])
-bcut = widgets.Button(axcut, 'Click when done', color='red')
+bcut = widgets.Button(axcut, 'Click here when done', color='red')
 
 fig.canvas.mpl_connect('button_press_event', onclick)
 bcut.on_clicked(btnClick)
