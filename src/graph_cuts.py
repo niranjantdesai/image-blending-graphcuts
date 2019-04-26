@@ -253,6 +253,10 @@ if __name__ == '__main__':
 
     src = cv2.imread('../images/src.jpg')
     target = cv2.imread('../images/target.jpg')
+
+    src_blur = cv2.GaussianBlur(src, (5, 5), 100)
+    target_blur = cv2.GaussianBlur(target, (5, 5), 100)
+
     mask = cv2.imread('../images/mask.png')
     # left corners of the patches
     src_roi_pt = (0, 0)     # (x, y)
@@ -260,12 +264,12 @@ if __name__ == '__main__':
     roi_width = src.shape[1]
     roi_height = src.shape[0]
 
-    src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
-    sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
+    src_patch = src_blur[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
+    sink_patch = target_blur[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
 
-    # cv2.imshow('Source patch', src_patch)
+    # cv2.imshow('Source blur', src_patch)
     # cv2.waitKey(0)
-    # cv2.imshow('Sink patch', sink_patch)
+    # cv2.imshow('Sink blur', target_blur)
     # cv2.waitKey(0)
     # cv2.imshow('Mask', mask)
     # cv2.waitKey(0)
@@ -273,8 +277,8 @@ if __name__ == '__main__':
     graphcuts = GraphCuts(src_patch, sink_patch, mask)
     # graphcuts.test_case()
 
-    sink_patch[graphcuts.sgm == True] = src_patch[graphcuts.sgm == True]
-    cv2.imwrite("result.png", sink_patch)
-    # cv2.imshow('Output', sink_patch)
+    target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
+    cv2.imwrite("result.png", target)
+    # cv2.imshow('Output', target)
     cv2.waitKey(0)
     pass
