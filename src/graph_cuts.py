@@ -260,7 +260,7 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    image_dir = '../images/mountain'
+    image_dir = '../images/hut'
     src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
     target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     src_blur = src
     target_blur = target
 
-    mask = cv2.imread(os.path.join(image_dir, 'mask.png'))
+    mask = cv2.imread(os.path.join(image_dir, 'our_mask.png'))
     # left corners of the patches
     src_roi_pt = (0, 0)     # (x, y)
     sink_roi_pt = (0, 0)    # (x, y)
@@ -290,6 +290,6 @@ if __name__ == '__main__':
     # graphcuts.test_case()
 
     target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
-    cv2.imwrite(os.path.join(image_dir, "result.png"), target)
+    cv2.imwrite(os.path.join(image_dir, "our_mask_result.png"), target)
     # cv2.imshow('Output', target)
     # cv2.waitKey(0)

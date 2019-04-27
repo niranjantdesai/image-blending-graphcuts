@@ -8,6 +8,7 @@ from PIL import Image
 import matplotlib.widgets as widgets
 import cv2
 import copy
+import os
 
 selectedImage = "1"
 previousCoordinates = None
@@ -16,7 +17,7 @@ def onclick(event):
     x, y = int(event.xdata), int(event.ydata)
     newCoordinates = (x, y)
     global selectedImage, previousCoordinates, mask, img1, img2, fig, img1Copy, img2Copy
-    lineWidth = 10
+    lineWidth = 8
     if event.inaxes in [ax1]:
         if previousCoordinates == None:
             previousCoordinates = newCoordinates
@@ -40,23 +41,30 @@ def onclick(event):
     fig.canvas.flush_events()
 
 def btnClick(event):
-    global selectedImage, ax1, img2, img2Copy, previousCoordinates
+    global selectedImage, ax1, img2, img2Copy, previousCoordinates, image_dir, maskFileName, mask, plt
     if selectedImage == "1":
         selectedImage = "2"
         ax1.imshow(img2Copy)
         previousCoordinates = None
     elif selectedImage == "2":
         selectedImage = "done"
-        ax1.imshow(np.array(mask, np.int32))
+        mask = np.uint8(mask)
+        ax1.imshow(mask)
+        mask = cv2.cvtColor(mask, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(os.path.join(image_dir, maskFileName), mask)
+    elif selectedImage == "done":
+        plt.close()
 
-img1Path = '../images/3.png'
-img2Path = '../images/4.png'
+image_dir = '../images/hut'
+img1FileName = 'src.jpg'
+img2FileName = 'target.jpg'
+maskFileName = "our_mask.png"
 
-img1 = cv2.imread(img1Path)
+img1 = cv2.imread(os.path.join(image_dir, img1FileName))
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 img1Copy = copy.copy(img1)
 
-img2 = cv2.imread(img2Path)
+img2 = cv2.imread(os.path.join(image_dir, img2FileName))
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
 img2Copy = copy.copy(img2)
 
