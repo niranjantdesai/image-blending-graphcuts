@@ -260,7 +260,7 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    image_dir = '../images/hut'
+    image_dir = '../images/mountain'
     src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
     target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 

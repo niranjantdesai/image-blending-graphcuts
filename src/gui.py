@@ -55,7 +55,7 @@ def btnClick(event):
     elif selectedImage == "done":
         plt.close()
 
-image_dir = '../images/hut'
+image_dir = '../images/mountain'
 img1FileName = 'src.jpg'
 img2FileName = 'target.jpg'
 maskFileName = "our_mask.png"
