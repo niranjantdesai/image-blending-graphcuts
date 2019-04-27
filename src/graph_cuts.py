@@ -1,9 +1,9 @@
 import maxflow
-# import scipy.io as sio
 import cv2
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import os
 
 
 class GraphCuts:
@@ -33,28 +33,28 @@ class GraphCuts:
         patch_height = src.shape[0]
         patch_width = src.shape[1]
         # norm_factor = np.amax(self.adj_matrix)
-        eps = 1e-10
+        eps = 1e-10     # for numerical stability, avoid divide by 0
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
                 # matching cost is the sum of squared differences between the pixel values
-                wt_curr = np.square(np.linalg.norm(src[row_idx, col_idx, :] - sink[row_idx, col_idx, :]))
-
                 # right neighbor
                 if col_idx + 1 < patch_width:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 0]
+                    # weight = self.adj_matrix[row_idx, col_idx, 0]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx, col_idx + 1])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx, col_idx + 1]))
-                    # weight = - weight / (norm_factor + eps)
-                    weight = - weight
+                    weight = weight / (norm_factor + eps)
+                    # weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
                     weight = self.adj_matrix[row_idx * patch_width + col_idx, 1]
+                    # weight = self.adj_matrix[row_idx, col_idx, 1]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx + 1, col_idx])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx + 1, col_idx]))
-                    # weight = - weight / (norm_factor + eps)
-                    weight = - weight
+                    weight = weight / (norm_factor + eps)
+                    # weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
@@ -62,9 +62,9 @@ class GraphCuts:
                 # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
                 # capacities only for the nodes corresponding to border pixels.
 
-                if np.array_equal(mask[row_idx, col_idx, ], [0, 255, 255]):
+                if np.array_equal(mask[row_idx, col_idx, :], [0, 255, 255]):
                     graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
-                elif np.array_equal(mask[row_idx, col_idx, ], [255, 128, 0]):
+                elif np.array_equal(mask[row_idx, col_idx, :], [255, 128, 0]):
                     graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
                 
         #         if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
@@ -110,6 +110,15 @@ class GraphCuts:
                     weight = wt_curr + wt_bottom
                     self.adj_matrix[row_idx * width + col_idx, 1] = weight
                     # self.adj_matrix[(row_idx + 1) * width + col_idx, row_idx * width + col_idx] = weight
+
+        # self.adj_matrix = np.zeros((src.shape[0], src.shape[1], 2))
+        # src_left_shifted = np.roll(src, -1, axis=1)
+        # sink_left_shifted = np.roll(sink, -1, axis=1)
+        # src_up_shifted = np.roll(src, -1, axis=0)
+        # sink_up_shifted = np.roll(sink, -1, axis=0)
+        # self.adj_matrix[:, :, 0] = np.sum(np.square(src - sink) + np.square(src_left_shifted - sink_left_shifted),
+        #                                   axis=2)
+        # self.adj_matrix[:, :, 1] = np.sum(np.square(src - sink) + np.square(src_up_shifted - sink_up_shifted), axis=2)
 
     def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, plot_terminals=True, font_size=7):
         """
@@ -251,13 +260,16 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    src = cv2.imread('../images/src.jpg')
-    target = cv2.imread('../images/target.jpg')
+    image_dir = '../images/mountain'
+    src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
+    target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 
-    src_blur = cv2.GaussianBlur(src, (5, 5), 100)
-    target_blur = cv2.GaussianBlur(target, (5, 5), 100)
+    # src_blur = cv2.GaussianBlur(src, (5, 5), 100)
+    # target_blur = cv2.GaussianBlur(target, (5, 5), 100)
+    src_blur = src
+    target_blur = target
 
-    mask = cv2.imread('../images/mask.png')
+    mask = cv2.imread(os.path.join(image_dir, 'mask.png'))
     # left corners of the patches
     src_roi_pt = (0, 0)     # (x, y)
     sink_roi_pt = (0, 0)    # (x, y)
@@ -278,7 +290,6 @@ if __name__ == '__main__':
     # graphcuts.test_case()
 
     target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
-    cv2.imwrite("result.png", target)
+    cv2.imwrite(os.path.join(image_dir, "result.png"), target)
     # cv2.imshow('Output', target)
-    cv2.waitKey(0)
-    pass
+    # cv2.waitKey(0)
