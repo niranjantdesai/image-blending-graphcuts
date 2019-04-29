@@ -77,8 +77,6 @@ class GraphCuts:
 
         flow = graph.maxflow()
         self.sgm = graph.get_grid_segments(node_ids)
-        print(self.sgm)
-        print(np.sum(self.sgm))
 
         # self.plot_graph_2d(graph, node_ids.shape, True)
 
@@ -260,7 +258,7 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    image_dir = '../images/mountain'
+    image_dir = '../images/hut'
     src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
     target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 
