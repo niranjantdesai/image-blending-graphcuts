@@ -259,7 +259,7 @@ if __name__ == '__main__':
     # roi_height = 120
 
     # image_dir = '../images/hut'
-    image_dir = '../../results/flowerpot'
+    image_dir = '../images/garden'
     src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
     target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 
