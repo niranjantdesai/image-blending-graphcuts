@@ -68,7 +68,7 @@ img2 = cv2.imread(os.path.join(image_dir, img2FileName))
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
 img2Copy = copy.copy(img2)
 
-mask = np.zeros(img1.shape)
+mask = np.zeros(img2.shape)
 
 fig = plt.figure(figsize=(20, 20))
 
