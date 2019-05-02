@@ -10,11 +10,13 @@ class GraphCuts:
     """
     Main class for image synthesis with graph cuts
     """
-    def __init__(self, src, sink, mask):
+    def __init__(self, src, sink, mask, save_graph=False):
         """
         Initializes the graph
         :param src: image to be blended (foreground)
         :param sink: background image
+        :param mask: manual mask with constrained pixels
+        :param save_graph: if true, graph is saved
         """
         assert (src.shape == sink.shape), "Source and sink dimensions must be the same: " + str(src.shape) + " != " + str(sink.shape)
 
@@ -22,7 +24,6 @@ class GraphCuts:
         graph = maxflow.Graph[float]()
         # Add the nodes. nodeids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((src.shape[0], src.shape[1]))
-        # norm_factor = 10000
 
         # create adjacency matrix
         self.create_adj_matrix(src, sink)
@@ -32,29 +33,25 @@ class GraphCuts:
         # TODO: use alternate API which is more efficient
         patch_height = src.shape[0]
         patch_width = src.shape[1]
-        # norm_factor = np.amax(self.adj_matrix)
         eps = 1e-10     # for numerical stability, avoid divide by 0
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
                 # matching cost is the sum of squared differences between the pixel values
+
                 # right neighbor
                 if col_idx + 1 < patch_width:
-                    weight = self.adj_matrix[row_idx * patch_width + col_idx, 0]
-                    # weight = self.adj_matrix[row_idx, col_idx, 0]
+                    weight = self.adj_matrix[row_idx, col_idx, 0]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx, col_idx + 1])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx, col_idx + 1]))
                     weight = weight / (norm_factor + eps)
-                    # weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
-                    weight = self.adj_matrix[row_idx * patch_width + col_idx, 1]
-                    # weight = self.adj_matrix[row_idx, col_idx, 1]
+                    weight = self.adj_matrix[row_idx, col_idx, 1]
                     norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx + 1, col_idx])) + \
                                   np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx + 1, col_idx]))
                     weight = weight / (norm_factor + eps)
-                    # weight = - weight
                     graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
 
                 # Add terminal edge capacities
@@ -66,57 +63,29 @@ class GraphCuts:
                     graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
                 elif np.array_equal(mask[row_idx, col_idx, :], [255, 128, 0]):
                     graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
-                
-        #         if row_idx == 0 or row_idx == patch_height - 1 or col_idx == 0 or col_idx == patch_width - 1:
-        #             graph.add_tedge(node_ids[row_idx][col_idx], np.inf, 0)
-        # graph.add_tedge(node_ids[patch_height//2][patch_width//2], 0, np.inf)
 
         # Plot graph
-        # nxg = graph.get_nx_graph()
-        # self.plot_graph_2d(nxg, patch_height, patch_width)
+        if save_graph:
+            nxg = graph.get_nx_graph()
+            self.plot_graph_2d(nxg, patch_height, patch_width)
 
         flow = graph.maxflow()
         self.sgm = graph.get_grid_segments(node_ids)
-
-        # self.plot_graph_2d(graph, node_ids.shape, True)
-
-        pass
 
     def create_adj_matrix(self, src, sink):
         """
         Create adjacency matrix of the graph
         """
         print("Creating adjacency matrix")
-        height = src.shape[0]
-        width = src.shape[1]
-        num_pixels = height * width
-        self.adj_matrix = np.zeros((num_pixels, 2))
-        for row_idx in range(height):
-            for col_idx in range(width):
-                wt_curr = np.square(np.linalg.norm(src[row_idx, col_idx, :] - sink[row_idx, col_idx, :]))
-
-                # right neighbor
-                if col_idx + 1 < width:
-                    wt_right = np.square(np.linalg.norm(src[row_idx, col_idx + 1, :] - sink[row_idx, col_idx + 1, :]))
-                    weight = wt_curr + wt_right
-                    self.adj_matrix[row_idx * width + col_idx, 0] = weight
-                    # self.adj_matrix[row_idx * width + col_idx + 1, row_idx * width + col_idx] = weight
-
-                # bottom neighbor
-                if row_idx + 1 < height:
-                    wt_bottom = np.square(np.linalg.norm(src[row_idx + 1, col_idx, :] - sink[row_idx + 1, col_idx, :]))
-                    weight = wt_curr + wt_bottom
-                    self.adj_matrix[row_idx * width + col_idx, 1] = weight
-                    # self.adj_matrix[(row_idx + 1) * width + col_idx, row_idx * width + col_idx] = weight
-
-        # self.adj_matrix = np.zeros((src.shape[0], src.shape[1], 2))
-        # src_left_shifted = np.roll(src, -1, axis=1)
-        # sink_left_shifted = np.roll(sink, -1, axis=1)
-        # src_up_shifted = np.roll(src, -1, axis=0)
-        # sink_up_shifted = np.roll(sink, -1, axis=0)
-        # self.adj_matrix[:, :, 0] = np.sum(np.square(src - sink) + np.square(src_left_shifted - sink_left_shifted),
-        #                                   axis=2)
-        # self.adj_matrix[:, :, 1] = np.sum(np.square(src - sink) + np.square(src_up_shifted - sink_up_shifted), axis=2)
+        self.adj_matrix = np.zeros((src.shape[0], src.shape[1], 2))
+        src_left_shifted = np.roll(src, -1, axis=1)
+        sink_left_shifted = np.roll(sink, -1, axis=1)
+        src_up_shifted = np.roll(src, -1, axis=0)
+        sink_up_shifted = np.roll(sink, -1, axis=0)
+        self.adj_matrix[:, :, 0] = np.sum(np.square(src - sink, dtype=np.float) +
+                                           np.square(src_left_shifted - sink_left_shifted, dtype=np.float), axis=2)
+        self.adj_matrix[:, :, 1] = np.sum(np.square(src - sink, dtype=np.float) +
+                                           np.square(src_up_shifted - sink_up_shifted, dtype=np.float), axis=2)
 
     def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, plot_terminals=True, font_size=7):
         """
@@ -258,10 +227,9 @@ if __name__ == '__main__':
     # roi_width = 150
     # roi_height = 120
 
-    # image_dir = '../images/hut'
-    image_dir = '../images/garden'
-    src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
-    target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
+    image_dir = '../images/wall'
+    src = cv2.imread(os.path.join(image_dir, 'src.png'))
+    target = cv2.imread(os.path.join(image_dir, 'target.png'))
 
     # src_blur = cv2.GaussianBlur(src, (5, 5), 100)
     # target_blur = cv2.GaussianBlur(target, (5, 5), 100)
@@ -289,6 +257,6 @@ if __name__ == '__main__':
     # graphcuts.test_case()
 
     target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
-    cv2.imwrite(os.path.join(image_dir, "our_mask_result.png"), target)
+    cv2.imwrite(os.path.join(image_dir, "result.png"), target)
     # cv2.imshow('Output', target)
     # cv2.waitKey(0)
