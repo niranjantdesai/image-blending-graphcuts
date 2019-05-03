@@ -4,6 +4,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import os
+import argparse
 
 
 class GraphCuts:
@@ -218,23 +219,13 @@ class GraphCuts:
 
 
 if __name__ == '__main__':
-    # Load images
-    # src = cv2.imread('../images/fish-small.jpg')
-    # target = cv2.imread('../images/underwater-small.jpg')
-    # # left corners of the patches
-    # src_roi_pt = (150, 125)     # (x, y)
-    # sink_roi_pt = (100, 100)    # (x, y)
-    # roi_width = 150
-    # roi_height = 120
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', dest='image_dir', required=True, help='Image directory')
+    args = parser.parse_args()
 
-    image_dir = '../images/wall'
-    src = cv2.imread(os.path.join(image_dir, 'src.png'))
-    target = cv2.imread(os.path.join(image_dir, 'target.png'))
-
-    # src_blur = cv2.GaussianBlur(src, (5, 5), 100)
-    # target_blur = cv2.GaussianBlur(target, (5, 5), 100)
-    src_blur = src
-    target_blur = target
+    image_dir = args.image_dir
+    src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
+    target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
 
     mask = cv2.imread(os.path.join(image_dir, 'our_mask.png'))
     # left corners of the patches
@@ -243,20 +234,11 @@ if __name__ == '__main__':
     roi_width = src.shape[1]
     roi_height = src.shape[0]
 
-    src_patch = src_blur[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
-    sink_patch = target_blur[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
-
-    # cv2.imshow('Source blur', src_patch)
-    # cv2.waitKey(0)
-    # cv2.imshow('Sink blur', target_blur)
-    # cv2.waitKey(0)
-    # cv2.imshow('Mask', mask)
-    # cv2.waitKey(0)
+    src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
+    sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
 
     graphcuts = GraphCuts(src_patch, sink_patch, mask)
     # graphcuts.test_case()
 
     target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
     cv2.imwrite(os.path.join(image_dir, "result.png"), target)
-    # cv2.imshow('Output', target)
-    # cv2.waitKey(0)

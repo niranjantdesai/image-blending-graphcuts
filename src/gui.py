@@ -9,9 +9,11 @@ import matplotlib.widgets as widgets
 import cv2
 import copy
 import os
+import argparse
 
 selectedImage = "1"
 previousCoordinates = None
+
 
 def onclick(event):
     x, y = int(event.xdata), int(event.ydata)
@@ -40,6 +42,7 @@ def onclick(event):
     fig.canvas.draw()
     fig.canvas.flush_events()
 
+
 def btnClick(event):
     global selectedImage, ax1, img2, img2Copy, previousCoordinates, image_dir, maskFileName, mask, plt
     if selectedImage == "1":
@@ -55,11 +58,16 @@ def btnClick(event):
     elif selectedImage == "done":
         plt.close()
 
-# image_dir = '../images/hut'
-image_dir = '../images/garden'
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-i', dest='image_dir', required=True, help='Image directory')
+args = parser.parse_args()
+
+# image_dir = '../images/garden'
+image_dir = args.image_dir
 img1FileName = 'src.jpg'
 img2FileName = 'target.jpg'
-maskFileName = "our_mask.png"
+maskFileName = 'mask.png'
 
 img1 = cv2.imread(os.path.join(image_dir, img1FileName))
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
