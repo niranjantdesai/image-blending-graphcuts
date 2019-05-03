@@ -1,5 +1,7 @@
 # Image blending with graphcuts
 
+The implementation follows the [paper](https://www.cc.gatech.edu/~turk/my_papers/graph_cuts.pdf) "Graphcut Textures: Image and Video Synthesis Using Graph Cuts" by Kwatra et al.
+
 ## Installation
 
 The implementation is in Python 3.
