@@ -11,9 +11,6 @@ Install the required Python packages using the following command:
 pip install -r python_requirements.txt
 ```
 
-`maxflow` requires Microsoft Visual C++ Compiler for Python 2.7 (https://www.microsoft.com/en-us/download/confirmation.aspx?id=44266)
-Install PyMaxFlow in the end
-
 The `networkx` library is used for graph plotting.
 
 ## Running
