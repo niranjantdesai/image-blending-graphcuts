@@ -13,7 +13,7 @@ class GraphCuts:
     """
     def __init__(self, src, sink, mask, save_graph=False):
         """
-        Initializes the graph
+        Initializes the graph and computes the min-cut.
         :param src: image to be blended (foreground)
         :param sink: background image
         :param mask: manual mask with constrained pixels
@@ -27,33 +27,29 @@ class GraphCuts:
         # Add the nodes. node_ids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((src.shape[0], src.shape[1]))
 
-        # create adjacency matrix
-        self.create_adj_matrix(src, sink)
-        print("Assigning weights")
+        self.compute_edge_weights(src, sink)
 
         # Add non-terminal edges
         # TODO: use alternate API which is more efficient
         patch_height = src.shape[0]
         patch_width = src.shape[1]
-        # Matching cost is the sum of squared differences between the pixel 
-        # values
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
                 # right neighbor
                 if col_idx + 1 < patch_width:
-                    weight = self.adj_matrix[row_idx, col_idx, 0]
+                    weight = self.edge_weights[row_idx, col_idx, 0]
                     graph.add_edge(node_ids[row_idx][col_idx],
-                                    node_ids[row_idx][col_idx + 1],
-                                    weight,
-                                    weight)
+                                   node_ids[row_idx][col_idx + 1],
+                                   weight,
+                                   weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
-                    weight = self.adj_matrix[row_idx, col_idx, 1]
+                    weight = self.edge_weights[row_idx, col_idx, 1]
                     graph.add_edge(node_ids[row_idx][col_idx],
-                                node_ids[row_idx + 1][col_idx],
-                                weight,
-                                weight)
+                                   node_ids[row_idx + 1][col_idx],
+                                   weight,
+                                   weight)
 
                 # Add terminal edge capacities for the pixels constrained to
                 # belong to the source/sink.
@@ -71,12 +67,13 @@ class GraphCuts:
         flow = graph.maxflow()
         self.sgm = graph.get_grid_segments(node_ids)
 
-    def create_adj_matrix(self, src, sink):
+    def compute_edge_weights(self, src, sink):
         """
-        Create adjacency matrix of the graph
+        Computes edge weights based on matching quality cost.
+        :param src: image to be blended (foreground)
+        :param sink: background image
         """
-        print("Creating adjacency matrix")
-        self.adj_matrix = np.zeros((src.shape[0], src.shape[1], 2))
+        self.edge_weights = np.zeros((src.shape[0], src.shape[1], 2))
 
         # Create shifted versions of the matrices for vectorized operations.
         src_left_shifted = np.roll(src, -1, axis=1)
@@ -97,7 +94,7 @@ class GraphCuts:
                              np.square(sink - sink_left_shifted, 
                              dtype=np.float),
                              axis=2)
-        self.adj_matrix[:, :, 0] = weight / (norm_factor + eps)
+        self.edge_weights[:, :, 0] = weight / (norm_factor + eps)
 
         # Bottom neighbor.
         weight = np.sum(np.square(src - sink, dtype=np.float) +
@@ -108,7 +105,7 @@ class GraphCuts:
                              np.square(sink - sink_up_shifted, 
                              dtype=np.float),
                              axis=2)
-        self.adj_matrix[:, :, 1] = weight / (norm_factor + eps)
+        self.edge_weights[:, :, 1] = weight / (norm_factor + eps)
 
     def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, 
                       plot_terminals=True, font_size=7):
@@ -263,7 +260,7 @@ if __name__ == '__main__':
     mask = cv2.imread(os.path.join(image_dir, 'our_mask.png'))
 
     # Compute the min-cut.
-    graphcuts = GraphCuts(src, sink, mask)
+    graphcuts = GraphCuts(src, target, mask)
     # graphcuts.test_case()
 
     # Save the output.
