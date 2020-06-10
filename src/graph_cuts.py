@@ -19,11 +19,12 @@ class GraphCuts:
         :param mask: manual mask with constrained pixels
         :param save_graph: if true, graph is saved
         """
-        assert (src.shape == sink.shape), "Source and sink dimensions must be the same: " + str(src.shape) + " != " + str(sink.shape)
+        assert (src.shape == sink.shape), \
+            f"Source and sink dimensions must be the same: {str(src.shape)} != {str(sink.shape)}"
 
         # Create the graph
         graph = maxflow.Graph[float]()
-        # Add the nodes. nodeids has the identifiers of the nodes in the grid.
+        # Add the nodes. node_ids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((src.shape[0], src.shape[1]))
 
         # create adjacency matrix
@@ -34,32 +35,28 @@ class GraphCuts:
         # TODO: use alternate API which is more efficient
         patch_height = src.shape[0]
         patch_width = src.shape[1]
-        eps = 1e-10     # for numerical stability, avoid divide by 0
+        # Matching cost is the sum of squared differences between the pixel 
+        # values
         for row_idx in range(patch_height):
             for col_idx in range(patch_width):
-                # matching cost is the sum of squared differences between the pixel values
-
                 # right neighbor
                 if col_idx + 1 < patch_width:
                     weight = self.adj_matrix[row_idx, col_idx, 0]
-                    norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx, col_idx + 1])) + \
-                                  np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx, col_idx + 1]))
-                    weight = weight / (norm_factor + eps)
-                    graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx][col_idx + 1], weight, weight)
+                    graph.add_edge(node_ids[row_idx][col_idx],
+                                    node_ids[row_idx][col_idx + 1],
+                                    weight,
+                                    weight)
 
                 # bottom neighbor
                 if row_idx + 1 < patch_height:
                     weight = self.adj_matrix[row_idx, col_idx, 1]
-                    norm_factor = np.square(np.linalg.norm(src_patch[row_idx, col_idx] - src_patch[row_idx + 1, col_idx])) + \
-                                  np.square(np.linalg.norm(sink_patch[row_idx, col_idx] - sink_patch[row_idx + 1, col_idx]))
-                    weight = weight / (norm_factor + eps)
-                    graph.add_edge(node_ids[row_idx][col_idx], node_ids[row_idx + 1][col_idx], weight, weight)
+                    graph.add_edge(node_ids[row_idx][col_idx],
+                                node_ids[row_idx + 1][col_idx],
+                                weight,
+                                weight)
 
-                # Add terminal edge capacities
-                # We constrain the pixels along the patch border to come from the sink, i.e. the background image.
-                # The terminal edges are already initialized for all nodes with capacity 0. We will reassign the
-                # capacities only for the nodes corresponding to border pixels.
-
+                # Add terminal edge capacities for the pixels constrained to
+                # belong to the source/sink.
                 if np.array_equal(mask[row_idx, col_idx, :], [0, 255, 255]):
                     graph.add_tedge(node_ids[row_idx][col_idx], 0, np.inf)
                 elif np.array_equal(mask[row_idx, col_idx, :], [255, 128, 0]):
@@ -70,6 +67,7 @@ class GraphCuts:
             nxg = graph.get_nx_graph()
             self.plot_graph_2d(nxg, patch_height, patch_width)
 
+        # Compute max flow / min cut.
         flow = graph.maxflow()
         self.sgm = graph.get_grid_segments(node_ids)
 
@@ -79,16 +77,41 @@ class GraphCuts:
         """
         print("Creating adjacency matrix")
         self.adj_matrix = np.zeros((src.shape[0], src.shape[1], 2))
+
+        # Create shifted versions of the matrices for vectorized operations.
         src_left_shifted = np.roll(src, -1, axis=1)
         sink_left_shifted = np.roll(sink, -1, axis=1)
         src_up_shifted = np.roll(src, -1, axis=0)
         sink_up_shifted = np.roll(sink, -1, axis=0)
-        self.adj_matrix[:, :, 0] = np.sum(np.square(src - sink, dtype=np.float) +
-                                           np.square(src_left_shifted - sink_left_shifted, dtype=np.float), axis=2)
-        self.adj_matrix[:, :, 1] = np.sum(np.square(src - sink, dtype=np.float) +
-                                           np.square(src_up_shifted - sink_up_shifted, dtype=np.float), axis=2)
 
-    def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, plot_terminals=True, font_size=7):
+        # Assign edge weights.
+        # For numerical stability, avoid divide by 0.
+        eps = 1e-10
+
+        # Right neighbor.
+        weight = np.sum(np.square(src - sink, dtype=np.float) +
+                        np.square(src_left_shifted - sink_left_shifted, 
+                        dtype=np.float),
+                        axis=2)
+        norm_factor = np.sum(np.square(src - src_left_shifted, dtype=np.float) +
+                             np.square(sink - sink_left_shifted, 
+                             dtype=np.float),
+                             axis=2)
+        self.adj_matrix[:, :, 0] = weight / (norm_factor + eps)
+
+        # Bottom neighbor.
+        weight = np.sum(np.square(src - sink, dtype=np.float) +
+                        np.square(src_up_shifted - sink_up_shifted,
+                        dtype=np.float),
+                        axis=2)
+        norm_factor = np.sum(np.square(src - src_up_shifted, dtype=np.float) +
+                             np.square(sink - sink_up_shifted, 
+                             dtype=np.float),
+                             axis=2)
+        self.adj_matrix[:, :, 1] = weight / (norm_factor + eps)
+
+    def plot_graph_2d(self, graph, nodes_shape, plot_weights=False, 
+                      plot_terminals=True, font_size=7):
         """
         Plot the graph to be used in graph cuts
         :param graph: PyMaxflow graph
@@ -124,12 +147,22 @@ class GraphCuts:
         plt.axis('equal')
         plt.show()
 
+    def blend(self, src, target):
+        """
+        Blends the target image with the source image based on the graph cut.
+        :param src: Source image
+        :param target: Target image
+        """
+        target[self.sgm] = src[self.sgm]
+        return target
+
     def test_case(self):
         # Create the graph
         graph = maxflow.Graph[float]()
         patch_height = 4
         patch_width = 5
-        # Add the nodes. nodeids has the identifiers of the nodes in the grid.
+
+        # Add the nodes. node_ids has the identifiers of the nodes in the grid.
         node_ids = graph.add_grid_nodes((patch_height, patch_width))
 
         edges = [
@@ -223,22 +256,16 @@ if __name__ == '__main__':
     parser.add_argument('-i', dest='image_dir', required=True, help='Image directory')
     args = parser.parse_args()
 
+    # Read the images and the mask.
     image_dir = args.image_dir
     src = cv2.imread(os.path.join(image_dir, 'src.jpg'))
     target = cv2.imread(os.path.join(image_dir, 'target.jpg'))
-
     mask = cv2.imread(os.path.join(image_dir, 'our_mask.png'))
-    # left corners of the patches
-    src_roi_pt = (0, 0)     # (x, y)
-    sink_roi_pt = (0, 0)    # (x, y)
-    roi_width = src.shape[1]
-    roi_height = src.shape[0]
 
-    src_patch = src[src_roi_pt[1]: src_roi_pt[1] + roi_height, src_roi_pt[0]: src_roi_pt[0] + roi_width, :]
-    sink_patch = target[sink_roi_pt[1]: sink_roi_pt[1] + roi_height, sink_roi_pt[0]: sink_roi_pt[0] + roi_width, :]
-
-    graphcuts = GraphCuts(src_patch, sink_patch, mask)
+    # Compute the min-cut.
+    graphcuts = GraphCuts(src, sink, mask)
     # graphcuts.test_case()
 
-    target[graphcuts.sgm == True] = src[graphcuts.sgm == True]
+    # Save the output.
+    target = graphcuts.blend(src, target)
     cv2.imwrite(os.path.join(image_dir, "result.png"), target)
